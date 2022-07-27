@@ -3,6 +3,8 @@ from goblet.resources.eventarc import EventArc
 from goblet.resources.pubsub import PubSub
 from goblet.resources.routes import ApiGateway
 from goblet.resources.scheduler import Scheduler
+from goblet.resources.vpc_connector import VPCConnector
+from goblet.resources.redis import Redis
 from goblet.resources.storage import Storage
 from goblet.resources.http import HTTP
 from googleapiclient.errors import HttpError
@@ -115,6 +117,20 @@ class DecoratorAPI:
             registration_kwargs={"headers": headers},
         )
 
+    def redis(self, **kwargs):
+        """Redis Infrastructure"""
+        return  self._register_infrastructure(
+            handler_type="redis",
+            kwargs=kwargs,
+        )
+
+    def vpcconnector(self, **kwargs):
+        """VPC Connector Infrastructure"""
+        return self._register_infrastructure(
+            handler_type="vpcconnector",
+            kwargs=kwargs,
+        )
+
     def _create_registration_function(self, handler_type, registration_kwargs=None):
         def _register_handler(user_handler):
             handler_name = user_handler.__name__
@@ -126,6 +142,9 @@ class DecoratorAPI:
 
     def _register_handler(self, handler_type, name, func, kwargs, options=None):
         raise NotImplementedError("_register_handler")
+
+    def _register_infrastructure(self, handler_type, kwargs, options=None):
+        raise NotImplementedError("_register_infrastructure")
 
     def register_middleware(self, func, event_type="all", before_or_after="before"):
         raise NotImplementedError("register_middleware")
@@ -147,6 +166,17 @@ class Register_Handlers(DecoratorAPI):
             raise ValueError(f"{backend} not a valid backend")
 
         versioned_clients = VersionedClients(client_versions or {})
+
+        self.infrastructure = {
+            "vpcconnector": VPCConnector(
+                function_name,
+                versioned_clients=versioned_clients,
+            ),
+            "redis": Redis(
+                function_name,
+                versioned_clients=versioned_clients,
+            )
+        }
 
         self.handlers = {
             "route": ApiGateway(
@@ -255,6 +285,12 @@ class Register_Handlers(DecoratorAPI):
             kwargs=kwargs,
         )
 
+    def _register_infrastructure(self, handler_type, kwargs, options=None):
+
+        getattr(self, "_register_%s" % handler_type)(
+            kwargs=kwargs
+        )
+
     def deploy(self, source_url, config={}):
         """Call each handlers deploy method"""
         for k, v in self.handlers.items():
@@ -315,3 +351,11 @@ class Register_Handlers(DecoratorAPI):
     def _register_eventarc(self, name, func, kwargs):
         name = kwargs.get("kwargs", {}).get("name") or name
         self.handlers["eventarc"].register_trigger(name=name, func=func, kwargs=kwargs)
+
+    def _register_redis(self, kwargs):
+        name = kwargs.get("kwargs", {}).get("name")
+        self.infrastructure["redis"].register_instance(name=name, kwargs=kwargs)
+
+    def _register_vpcconnector(self, kwargs):
+        name = kwargs.get("kwargs", {}).get("name")
+        self.infrastructure["vpcconnector"].register_instance(name=name, kwargs=kwargs)

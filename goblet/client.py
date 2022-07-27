@@ -245,5 +245,23 @@ class VersionedClients:
         )
 
     @property
+    def redis(self):
+        return Client(
+            "redis",
+            self.client_versions.get("redis", "v1"),
+            calls="projects.locations.instances",
+            parent_schema="projects/{project_id}/locations/{location_id}",
+        )
+
+    @property
+    def vpcconnector(self):
+        return Client(
+            "vpcconnector",
+            self.client_versions.get("vpcconnector", "v1"),
+            calls="projects.locations.connectors",
+            parent_schema="projects/{project_id}/locations/{location_id}",
+        )
+
+    @property
     def gcloud(self):
         return self.client_versions.get("gcloud")
