@@ -46,8 +46,11 @@ class BigQueryRemoteFunction(Handler):
         """
         kwargs = kwargs.pop("kwargs")
         _input, _output = BigQueryRemoteFunction._get_hints(func)
-        self.resources[self.name + "_" + name] = {
-            "routine_name": self.name + "_" + name,
+        # Routine names must contain only letters, numbers, and underscores, and be at most 256 characters long.
+        routine_name = self.name + "_" + name
+        routine_name = routine_name.replace("-", "_")
+        self.resources[routine_name] = {
+            "routine_name": routine_name,
             "dataset_id": kwargs["dataset_id"],
             "inputs": _input,
             "output": _output,
@@ -191,14 +194,12 @@ class BigQueryRemoteFunction(Handler):
             bq_connection = self.versioned_clients.bigquery_connections.execute(
                 "create", params={"body": resource_type, "connectionId": connection_id}
             )
-            log.info("Created bigquery connection name: %s", connection_id)
+            log.info(f"Created bigquery connection name: {connection_id}")
 
         except HttpError as exception:
             if exception.resp.status == 409:
                 log.info(
-                    "Bigquery connection already exist with name: %s for %s",
-                    connection_name,
-                    self.name,
+                    f"Bigquery connection already exist with name: {connection_name} for {self.name}"
                 )
                 client = self.versioned_clients.bigquery_connections
                 bq_connection = client.execute(
@@ -206,7 +207,7 @@ class BigQueryRemoteFunction(Handler):
                     params={"name": client.parent + "/connections/" + connection_id},
                     parent=False,
                 )
-                log.info("Returning connection %s", bq_connection["name"])
+                log.info(f"Returning connection {bq_connection['name']}")
             else:
                 log.error(exception.error_details)
                 raise exception
@@ -228,7 +229,7 @@ class BigQueryRemoteFunction(Handler):
             )
         except HttpError as exception:
             if exception.resp.status == 404:
-                log.info("Connection %s already destroyed", connection_id)
+                log.info(f"Connection {connection_id} already destroyed")
             else:
                 raise exception
         return True
@@ -252,15 +253,12 @@ class BigQueryRemoteFunction(Handler):
             log.info("Destroyed routine %s for dataset %s", routine_id, dataset_id)
         except HttpError as exception:
             if exception.resp.status == 409:
-                log.info("Routine %s already destroyed", routine_id)
+                log.info(f"Routine {routine_id} already destroyed")
             elif exception.resp.status == 404:
-                log.info("Routine %s doesn't exist. already destroyed?", routine_id)
+                log.info(f"Routine {routine_id} doesn't exist. already destroyed?")
             else:
                 log.error(
-                    "Couldn't destroy %s for dataset %s. %s",
-                    routine_id,
-                    dataset_id,
-                    exception.error_details,
+                    f"Couldn't destroy {routine_id} for dataset {dataset_id}. {exception.error_details}"
                 )
                 raise exception
 

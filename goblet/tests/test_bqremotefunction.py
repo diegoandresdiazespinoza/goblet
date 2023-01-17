@@ -1,19 +1,8 @@
 import json
-from pprint import pprint
 from unittest.mock import Mock
 from goblet import Goblet
-from goblet.resources.scheduler import Scheduler
-from goblet.test_utils import (
-    get_responses,
-    get_response,
-    mock_dummy_function,
-    dummy_function,
-)
-from goblet.backends import CloudRun, CloudFunctionV1
-from resources.bq_remote_function import BigQueryRemoteFunction
-
-
-# from goblet.resources.bq_remote_function import get_hints
+from goblet.test_utils import get_responses
+from goblet.resources.bq_remote_function import BigQueryRemoteFunction
 
 
 class TestBqRemoteFunction:
@@ -22,21 +11,13 @@ class TestBqRemoteFunction:
         monkeypatch.setenv("GOOGLE_PROJECT", "TEST_PROJECT")
         monkeypatch.setenv("GOOGLE_LOCATION", "us-central1")
 
-        test_name = "bqremotefunction_test"
         test_dataset_id = "blogs"
 
         @app.bqremotefunction(dataset_id="blogs")
         def string_test_blogs_1(x: str, y: str) -> str:
             return f"Passed parameters x:{x}  y:{y}"
 
-        app.bqremotefunction(
-            func=dummy_function, name=test_name, dataset_id=test_dataset_id
-        )
         resources = app.handlers["bqremotefunction"].resources
-
-        app.handlers["http"].register(
-            name="dummy_function", func=dummy_function, kwargs={}
-        )
 
         input, output = BigQueryRemoteFunction._get_hints(string_test_blogs_1)
 
@@ -65,15 +46,10 @@ class TestBqRemoteFunction:
 
         test_name = "bqremotefunction_test"
         app = Goblet(function_name=test_name)
-        test_dataset_id = "blogs"
 
         @app.bqremotefunction(dataset_id="blogs")
         def function_test(x: int, y: int) -> int:
             return x * y
-
-        app.bqremotefunction(
-            func=dummy_function, name=test_name, dataset_id=test_dataset_id
-        )
 
         body = {
             "userDefinedContext": {
@@ -99,18 +75,10 @@ class TestBqRemoteFunction:
 
         test_name = "bqremotefunction_test"
         app = Goblet(function_name=test_name)
-        test_dataset_id = "blogs"
-        app.handlers["http"].register(
-            name="dummy_function", func=dummy_function, kwargs={}
-        )
 
         @app.bqremotefunction(dataset_id="blogs")
         def string_test_blogs_1(x: str, y: str) -> str:
             return f"Passed parameters x:{x}  y:{y}"
-
-        app.bqremotefunction(
-            func=dummy_function, name=test_name, dataset_id=test_dataset_id
-        )
 
         app.deploy(force=True)
         responses = get_responses(test_deploy_name)
@@ -167,16 +135,11 @@ class TestBqRemoteFunction:
 
         test_name = "bqremotefunction_test"
         app = Goblet(function_name=test_name)
-        test_dataset_id = "blogs"
 
         @app.bqremotefunction(dataset_id="blogs")
         def string_test_blogs_1(x: str, y: str) -> str:
             return f"Passed parameters x:{x}  y:{y}"
 
-        app.bqremotefunction(
-            func=dummy_function, name=test_name, dataset_id=test_dataset_id
-        )
-        # app.handlers["http"].register_http(dummy_function, {})
         app.destroy()
         responses = get_responses(test_deploy_name)
 
